@@ -1,0 +1,17 @@
+# 编译产物
+*.o
+*.exe
+*.out
+*.dll
+*.so
+*.a
+build/
+
+# IDE
+.vscode/
+*.suo
+*.vcxproj
+*.sln
+
+# macOS
+.DS_Store
