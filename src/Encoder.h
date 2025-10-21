@@ -26,5 +26,5 @@ private:
     AVCodecContextPtr enc_ctx_ = nullptr;
     SwsContextPtr sws_ctx_ = nullptr;
     AVFramePtr scaled_frame_ = nullptr;
-    long frame_count_ = 0;
+    long frame_count_ = 0; // 用于设置 PTS
 };

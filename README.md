@@ -1,29 +1,17 @@
-# DesktopShare V1: 基于FFmpeg的多线程RTSP推流客户端
+# DesktopShare V1
 
 当前版本是一个在Linux上运行的、低性能的、纯后端的屏幕直播推流工具。作为后续项目的起点。
 
+# DesktopShare V2
+
+改进为一个**独立的 RTSP 服务器**。捕获 Linux 桌面屏幕，使用 FFmpeg 进行 H.264 编码，并通过集成的 `net` 和 `xop` 网络库将视频流作为 RTSP 源提供服务，供客户端直接拉流观看。
+
+此版本是项目迭代的第二阶段，核心改进是集成了外部网络库 (`net` 和 `xop`)，取代了第一版依赖mediamttx。
+
 ## 流程
+V1: 捕获Linux桌面 (使用 FFmpeg x11grab) -> H.264软件编码 (使用 FFmpeg libx264) -> 推流到 MediaMTX RTSP服务器。
 
-捕获Linux桌面 -\> H.264软件编码 -\> 推流到 MediaMTX RTSP服务器。
-
-## 架构设计
-
-本项目采用多线程“生产者-消费者”模型，将屏幕捕获、视频编码和网络推流三个核心任务解耦。
-
- 1.  **采集线程 (Capture)**
-      **功能**: 利用 FFmpeg 的 `libavdevice` 库和 `x11grab` 输入格式，在 X11 系统从桌面环境中捕获原始屏幕图像数据。
-
-2.  **编码线程 (Encoder)**
-
-      **功能**: 从“原始帧队列”中取出图像，使用 `libx264` 编码器将其压缩为 H.264 视频包。
-
-3.  **推流线程 (Streamer)**
-
-      **功能**: 从“编码包队列”中获取数据，将其封装为 RTSP 协议格式，并通过网络发送到远端服务器。
-
-4.  **线程间通信**
-
-      **功能**: 使用了两个 `ThreadSafeQueue<T>` 模板类的实例。
+V2: 捕获Linux桌面 (使用 FFmpeg x11grab) -> H.264软件编码 (使用 FFmpeg libx264) -> 集成 net 和 xop 库，作为独立的 RTSP 服务器 -> 等待客户端连接并拉取流。
 
 ## 技术栈
 
@@ -44,20 +32,8 @@
   * FFmpeg 开发库（我用的已编译的linux上的ffmpeg）
 ```
 
-### 构建
 
-mkdir build && cd build
-cmake ..
-make
-```
-
-## 当前状态
-
-V1版本验证了FFmpeg和多线程进行屏幕直播的技术。
-
------
-
-## 后续迭代计划
+## 迭代计划
 
 ### 第二版：移除对外部RTSP服务器的依赖，集成网络库，让程序自身成为rtsp服务器。
 

@@ -11,22 +11,35 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
+// 为 AVFormatContext 自定义 Deleter
 struct AVFormatContextDeleter
 {
     void operator()(AVFormatContext *ptr) const
     {
         if (!ptr)
             return;
-        // 对于输出上下文，需要检查 pb
-        if (ptr->oformat && !(ptr->oformat->flags & AVFMT_NOFILE) && ptr->pb)
-        {
-            avio_closep(&ptr->pb);
+        // 区分输入和输出上下文的关闭方式
+        if (ptr->iformat)
+        {                               // 输入上下文
+            avformat_close_input(&ptr); // 注意这里传递的是指针的地址
         }
-        avformat_free_context(ptr);
+        else if (ptr->oformat)
+        { // 输出上下文
+            if (!(ptr->oformat->flags & AVFMT_NOFILE) && ptr->pb)
+            {
+                avio_closep(&ptr->pb);
+            }
+            avformat_free_context(ptr);
+        }
+        else
+        { // 未知或未打开的上下文
+            avformat_free_context(ptr);
+        }
     }
 };
 using AVFormatContextPtr = std::unique_ptr<AVFormatContext, AVFormatContextDeleter>;
 
+// 为 AVCodecContext 自定义 Deleter
 struct AVCodecContextDeleter
 {
     void operator()(AVCodecContext *ptr) const
@@ -35,6 +48,8 @@ struct AVCodecContextDeleter
     }
 };
 using AVCodecContextPtr = std::unique_ptr<AVCodecContext, AVCodecContextDeleter>;
+
+// 为 AVFrame 自定义 Deleter
 struct AVFrameDeleter
 {
     void operator()(AVFrame *ptr) const
@@ -44,6 +59,7 @@ struct AVFrameDeleter
 };
 using AVFramePtr = std::unique_ptr<AVFrame, AVFrameDeleter>;
 
+// 为 AVPacket 自定义 Deleter
 struct AVPacketDeleter
 {
     void operator()(AVPacket *ptr) const
@@ -53,6 +69,7 @@ struct AVPacketDeleter
 };
 using AVPacketPtr = std::unique_ptr<AVPacket, AVPacketDeleter>;
 
+// 为 SwsContext 自定义 Deleter
 struct SwsContextDeleter
 {
     void operator()(SwsContext *ptr) const
