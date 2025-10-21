@@ -1,8 +1,0 @@
-paths:
-  live:
-    # 显式定义 /live 路径
-    source: publisher
-    # 允许发布者覆盖（默认 yes，可省略）
-    overridePublisher: yes
-    # 可选：限制最大读者数（0 = 无限制）
-    maxReaders: 0

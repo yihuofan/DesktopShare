@@ -1,44 +1,83 @@
-# DesktopShare V1
+# DesktopShare
 
-当前版本是一个在Linux上运行的、低性能的、纯后端的屏幕直播推流工具。作为后续项目的起点。
+一个轻量级的 Linux 桌面屏幕共享与直播推流工具。
+---
 
-# DesktopShare V2
+## 版本演进
 
-改进为一个**独立的 RTSP 服务器**。捕获 Linux 桌面屏幕，使用 FFmpeg 进行 H.264 编码，并通过集成的 `net` 和 `xop` 网络库将视频流作为 RTSP 源提供服务，供客户端直接拉流观看。
+### V1：基础推流原型
+- **功能**：捕获桌面 → 软件编码 → 推流至 **外部 MediaMTX RTSP 服务器**
+- **架构**：纯后端，无网络服务模块
+- **定位**：体验 FFmpeg 屏幕捕获与编码
 
-此版本是项目迭代的第二阶段，核心改进是集成了外部网络库 (`net` 和 `xop`)，取代了第一版依赖mediamttx。
+### V2：独立 RTSP 服务器（当前版本）
+- **核心改进**：
+  - 移除对 MediaMTX 的依赖
+  - 集成开源网络库 [`net`](https://github.com/PHZ76/net) 和 [`xop`](https://github.com/PHZ76/xop)（轻量级 RTSP/RTP 实现）
+  - 程序自身作为 RTSP 服务器，支持客户端直接拉流（`rtsp://<ip>:<port>/live`）
+- **数据流**：
+  ```
+  X11 桌面捕获 (x11grab)
+      ↓
+  FFmpeg 软件编码 (libx264)
+      ↓
+  自建 RTSP 服务 (net + xop)
+      ↓
+  客户端拉流播放
+  ```
 
-## 流程
-V1: 捕获Linux桌面 (使用 FFmpeg x11grab) -> H.264软件编码 (使用 FFmpeg libx264) -> 推流到 MediaMTX RTSP服务器。
+---
 
-V2: 捕获Linux桌面 (使用 FFmpeg x11grab) -> H.264软件编码 (使用 FFmpeg libx264) -> 集成 net 和 xop 库，作为独立的 RTSP 服务器 -> 等待客户端连接并拉取流。
+## 项目结构
+
+```
+RTSP_Server_V2/
+├── CMakeLists.txt
+└── src/
+    ├── ffmpeg7.1/          # 静态链接的 FFmpeg 7.1（含头文件与库）
+    ├── net/                # 网络基础库（TCP/UDP/EventLoop）
+    ├── xop/                # RTSP/RTP 协议实现
+    ├── Capture.{h,cpp}     # 屏幕捕获模块（基于 x11grab）
+    ├── Encoder.{h,cpp}     # 视频编码封装
+    ├── FFMpegWrappers.h    # FFmpeg C API 的 C++ 封装（RAII 资源管理）
+    ├── RtspServerModule.{h,cpp}  # RTSP 服务集成与流发布
+    ├── ThreadSafeQueue.h   # 线程安全队列（生产者-消费者模型）
+    └── main.cpp            # 主入口
+```
+
+---
 
 ## 技术栈
 
-  * **核心库**: **FFmpeg7.1**
-      * `libavdevice`: 用于屏幕捕获。
-      * `libavcodec`: 负责视频的编码和解码。
-      * `libavformat`: 用于 RTSP 协议的封装与推流。
-      * `libswscale`: 用于图像的缩放和像素格式转换。
+| 组件 | 用途 |
+|------|------|
+| **FFmpeg 7.1** | 核心多媒体处理 |
+| &nbsp;&nbsp;– `libavdevice` | X11 屏幕捕获 (`x11grab`) |
+| &nbsp;&nbsp;– `libavcodec` | H.264 软件编码 (`libx264`) |
+| &nbsp;&nbsp;– `libavformat` | 封装为 RTP/RTSP 流（辅助）|
+| &nbsp;&nbsp;– `libswscale` | 像素格式转换（如 BGR → YUV420P）|
+| **net + xop** | 自主 RTSP 服务（替代 MediaMTX）|
+| **C++17** | 语言标准（RAII、智能指针、线程安全）|
 
-## 如何构建和运行
+> 💡 注：当前使用 **软件编码**，后续版本将引入硬件加速。
+
+---
+
+## 构建与运行
 
 ### 依赖项
+- GCC/G++ (≥9.0)
+- CMake (≥3.16)
+- X11 开发库（`libx11-dev`, `libxext-dev`）
+- FFmpeg 7.1（可网上寻找已编译版本）
 
-确保已安装以下依赖：
+---
 
-  * GCC/G++
-  * CMake
-  * FFmpeg 开发库（我用的已编译的linux上的ffmpeg）
+## 迭代路线图
+
+| 版本 | 目标 |
+|------|------|
+| **V3** | 性能优化：替换 `x11grab` 为 **原生 XCB/EGL/DRM** 屏幕捕获，降低延迟与 CPU 占用 |
+| **V4** | 增加 **图形化界面**：基于 OpenGL + ImGui，提供启动/停止/状态监控 |
+| **V5** | **多模态增强**：<br>• 音频采集（ALSA/PulseAudio）<br>• NVIDIA NVENC / Intel QSV / VAAPI 硬件编码<br>• 同时支持 RTSP 服务 + RTMP 推流<br>• UI 动态调节：码率、帧率、GOP、分辨率等 |
 ```
-
-
-## 迭代计划
-
-### 第二版：移除对外部RTSP服务器的依赖，集成网络库，让程序自身成为rtsp服务器。
-
-### 第三版：提高性能，替换为原生屏幕捕获等。
-
-### 第四版：尝试 OpenGL与ImGui 增加图形化界面
-
-### 第五版：增加音频采集和编码，支持NVIDIA硬件编码器，多协议，同时支持RTSP服务和RTMP推流，在UI中提供对码率、帧率、GOP等核心编码参数的动态调整。
